@@ -38,23 +38,6 @@ const DefaultAdmin = async (req, res) => {
  * add users
  */
 
-// const AddUser = async (req, res) => {
-//   try {
-//     // Directly create and save user
-//     const user = await User.create(req.body);
-
-//     res.status(201).json({
-//       success: true,
-//       message: "User created successfully",
-//       data: user,
-//     });
-//   } catch (error) {
-//     res.status(400).json({
-//       success: false,
-//       message: error.message || "Failed to create user",
-//     });
-//   }
-// };
 
 const AddUser = async (req, res) => {
   try {
@@ -141,78 +124,6 @@ const UpdateUser = async (req, res) => {
 };
 
 
-// const UpdateUser = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     const { email } = req.body;
-
-//     // Check if another user already has this email
-//     if (email) {
-//       const existingUser = await User.findOne({ email, _id: { $ne: id } });
-//       if (existingUser) {
-//         return res.status(400).json({
-//           success: false,
-//           message: "Another user with this email already exists",
-//         });
-//       }
-//     }
-
-//     const user = await User.findByIdAndUpdate(id, req.body, {
-//       new: true, // return updated document
-//       runValidators: true, // validate against schema
-//     });
-
-//     if (!user) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "User not found",
-//       });
-//     }
-
-//     res.status(200).json({
-//       success: true,
-//       message: "User updated successfully",
-//       data: user,
-//     });
-//   } catch (error) {
-//     res.status(400).json({
-//       success: false,
-//       message: error.message || "Failed to update user",
-//     });
-//   }
-// };
-
-
-
-
-// const UpdateUser = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-
-//     const user = await User.findByIdAndUpdate(id, req.body, {
-//       new: true, // return updated document
-//       runValidators: true, // validate against schema
-//     });
-
-//     if (!user) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "User not found",
-//       });
-//     }
-
-//     res.status(200).json({
-//       success: true,
-//       message: "User updated successfully",
-//       data: user,
-//     });
-//   } catch (error) {
-//     res.status(400).json({
-//       success: false,
-//       message: error.message || "Failed to update user",
-//     });
-//   }
-// };
 
 /**
  * get users list
@@ -308,14 +219,23 @@ const AddCategory = async (req, res) => {
  * get category list
  */
 
- const getCategories = async (req, res) => {
+
+
+const getCategories = async (req, res) => {
   try {
     const categories = await Category.find().sort({ createdAt: -1 });
-    res.status(200).json(categories);
+    res.status(200).json({
+      success: true,       
+      data: categories,    
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
+
 
 /**
  * update points
@@ -371,7 +291,7 @@ const AddPoints = async (req, res) => {
 };
 
 /**
- * add prgram
+ * add program
  */
 
 const AddProgram = async (req, res) => {
@@ -433,9 +353,13 @@ const getPrograms = async (req, res) => {
     const programs = await Program.find()
       .populate("category")
       .sort({ createdAt: -1 });
-    res.status(200).json(programs);
+
+    res.status(200).json({
+      success: true,
+      data: programs,
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 

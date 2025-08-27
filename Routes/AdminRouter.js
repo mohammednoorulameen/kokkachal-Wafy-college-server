@@ -7,7 +7,7 @@ import { verifyAdmin } from "../Middlewares/VerifyAdmin.js";
 
 adminRouter.get('/admin-get-users', GetUsers)
 adminRouter.get('/admin-get-categories', getCategories);
-adminRouter.get('/admin-get-progrems', getPrograms);
+adminRouter.get('/admin-get-programs', getPrograms);
 
 
 // POST
