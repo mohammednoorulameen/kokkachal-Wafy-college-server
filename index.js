@@ -22,8 +22,8 @@ app.use('/images',express.static(path.join(__dirname,'Public','images')));
 
 app.use(express.json())
 const corsOption = {
-  // origin: "http://localhost:5173",
-  origin: ["https://kokkachal-wafy-college-client.vercel.app"],
+  origin: "http://localhost:5173",
+  // origin: ["https://kokkachal-wafy-college-client.vercel.app"],
   credentials: true,  
 };
 
