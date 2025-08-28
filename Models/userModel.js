@@ -15,6 +15,12 @@ const userSchema = new mongoose.Schema(
       required: true,
       unique: true
     },
+    chessNumber: {
+      type: String,
+      required: true,
+      unique: true, 
+      trim: true,
+    },
     category: {
      type: mongoose.Schema.Types.ObjectId, 
      ref: "Category"
@@ -37,6 +43,11 @@ const userSchema = new mongoose.Schema(
         ref: "Program",
       },
     ],
+    team: {
+      type: String,
+      enum: ["GROUP-A", "GROUP-B", "GROUP-C"], 
+      required: true,
+    },
   },
   { timestamps: true }
 );

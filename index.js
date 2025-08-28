@@ -3,7 +3,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import dotenv from "dotenv";
 import path from 'path'
-// import userRouter from './Routes/userRouter.js';
+import userRouter from './Routes/userRouter.js';
 import adminRouter from './Routes/AdminRouter.js';
 import connectDB from "./Config/dbConnection.js";
 import { fileURLToPath } from 'url';
@@ -22,8 +22,8 @@ app.use('/images',express.static(path.join(__dirname,'Public','images')));
 
 app.use(express.json())
 const corsOption = {
-  // origin: "http://localhost:5173",
-  origin: ["https://kokkachal-wafy-college-client.vercel.app"],
+  origin: "http://localhost:5173",
+  // origin: ["https://kokkachal-wafy-college-client.vercel.app"],
   credentials: true,  
 };
 
@@ -32,7 +32,7 @@ app.use(cookieParser())
 
 
 // api end points 
-// app.use('/api/user',userRouter)
+app.use('/api/user',userRouter)
 app.use('/api/admin',adminRouter)
 
 

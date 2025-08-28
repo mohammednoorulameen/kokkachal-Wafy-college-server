@@ -1,7 +1,7 @@
 import express from "express";
 const adminRouter = express();
 import { AddCategory, AddPoints, AddProgram, AddUser, DefaultAdmin, getCategories, getPrograms, GetUsers, UpdateUser } from '../Controllers/Admin/AdminController.js'
-import { verifyAdmin } from "../Middlewares/VerifyAdmin.js";
+// import { verifyAdmin } from "../Middlewares/VerifyAdmin.js";
 
 // GET
 
