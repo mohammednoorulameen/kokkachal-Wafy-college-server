@@ -2,7 +2,7 @@ import express from "express";
 import {
   getAllPrograms,
   GetLatestWinningTeam,
-  GetTotalPrograms,
+  GetTotalofPrograms,
   getWinningProgramAndStudents,
   GetWinningStudents,
   getWinningStudentsByTeam,
@@ -10,8 +10,8 @@ import {
 const userRouter = express();
 
 userRouter.get("/get-winnig-studets", GetWinningStudents);
-userRouter.get("/get-total-programs", GetTotalPrograms);
 userRouter.get("/get-winning-teams", GetLatestWinningTeam);
+userRouter.get("/get-totalpoint-programs", GetTotalofPrograms);
 userRouter.get("/get-all-programs", getAllPrograms);
 userRouter.get("/get-winnigstudent-eachteams", getWinningStudentsByTeam);
 userRouter.get("/get-program-winnigstudent", getWinningProgramAndStudents);

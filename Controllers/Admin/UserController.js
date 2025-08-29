@@ -63,7 +63,7 @@ const GetWinningStudents = async (req, res) => {
  * get total programs
  */
 
-const GetTotalPrograms = async (req, res) => {
+const GetTotalofPrograms = async (req, res) => {
   try {
     const totalPrograms = await Program.countDocuments();
 
@@ -93,13 +93,23 @@ const GetLatestWinningTeam = async (req, res) => {
     const teams = await User.aggregate([
       {
         $group: {
-          _id: "$team",
-          totalPoints: { $sum: "$points" },
-          latestCreatedAt: { $max: "$createdAt" },
+          _id: "$team", // group by team name
+          totalPoints: { $sum: "$points" }, // sum of points per team
+          latestCreatedAt: { $max: "$createdAt" }, // latest member creation
+          members: { $push: { name: "$name", points: "$points" } }, // store team members
         },
       },
       {
-        $sort: { totalPoints: -1, latestCreatedAt: -1 },
+        $sort: { totalPoints: -1, latestCreatedAt: -1 }, // sort by totalPoints desc, then latestCreatedAt desc
+      },
+      {
+        $project: {
+          _id: 0,
+          teamName: "$_id",
+          totalPoints: 1,
+          latestCreatedAt: 1,
+          members: 1,
+        },
       },
     ]);
 
@@ -118,13 +128,39 @@ const GetLatestWinningTeam = async (req, res) => {
   }
 };
 
+
 /**
  * all programs
  */
 
+// const getAllPrograms = async (req, res) => {
+//   try {
+//     const programs = await Program.find({}).sort({ createdAt: -1 });
+
+//     return res.status(200).json({
+//       success: true,
+//       data: programs,
+//       message: "Programs fetched successfully",
+//     });
+//   } catch (error) {
+//     console.error("Error fetching programs:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Failed to fetch programs",
+//       error: error.message,
+//     });
+//   }
+// };
+
+
 const getAllPrograms = async (req, res) => {
   try {
-    const programs = await Program.find({}).sort({ createdAt: -1 });
+    const programs = await Program.find({})
+      .sort({ createdAt: -1 })
+      .populate({
+        path: "category",       // field in Program that references Category
+        select: "category -_id",    // only return the 'name' field
+      });
 
     return res.status(200).json({
       success: true,
@@ -251,7 +287,7 @@ const getWinningProgramAndStudents = async (req, res) => {
 
 export {
   GetWinningStudents,
-  GetTotalPrograms,
+  GetTotalofPrograms,
   GetLatestWinningTeam,
   getAllPrograms,
   getWinningStudentsByTeam,
