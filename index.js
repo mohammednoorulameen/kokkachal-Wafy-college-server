@@ -24,7 +24,7 @@ app.use(express.json())
 const corsOption = {
   // origin: "http://localhost:5173",
   origin: ["https://kokkachal-wafy-college-client.vercel.app"],
-  credentials: true,  
+  credentials: false,  
 };
 
 app.use(cors(corsOption))
