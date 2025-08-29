@@ -5,8 +5,9 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import dotenv from "dotenv";
 import path from 'path'
-import userRouter from './Routes/userRouter.js';
+
 import adminRouter from './Routes/AdminRouter.js';
+import userRouter from './Routes/UserRouter.js';
 import connectDB from "./Config/dbConnection.js";
 import { fileURLToPath } from 'url';
 const __fileame = fileURLToPath(import.meta.url);
