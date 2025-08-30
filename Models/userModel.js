@@ -47,7 +47,7 @@ const userSchema = new mongoose.Schema(
     ],
     team: {
       type: String,
-      enum: ["GROUP-A", "GROUP-B", "GROUP-C"], 
+      enum: ["RADIANCE", "BRILLIANCE", "RESILIENCE"], 
       required: true,
     },
   },

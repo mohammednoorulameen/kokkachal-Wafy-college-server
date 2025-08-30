@@ -38,7 +38,7 @@ const DefaultAdmin = async (req, res) => {
  * add users
  */
 
-const TEAM_SET = new Set(["GROUP-A", "GROUP-B", "GROUP-C"]);
+const TEAM_SET = new Set(["RADIANCE", "BRILLIANCE", "RESILIENCE"]);
 
 const AddUser = async (req, res) => {
   try {
