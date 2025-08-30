@@ -21,10 +21,12 @@ const userSchema = new mongoose.Schema(
       unique: true, 
       trim: true,
     },
-    category: {
+    categories: [
+      {
      type: mongoose.Schema.Types.ObjectId, 
      ref: "Category"
     },
+  ],
     points: {
       type: Number,
       default: 0,

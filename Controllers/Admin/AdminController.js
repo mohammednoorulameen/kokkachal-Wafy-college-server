@@ -38,19 +38,31 @@ const DefaultAdmin = async (req, res) => {
  * add users
  */
 
+const TEAM_SET = new Set(["GROUP-A", "GROUP-B", "GROUP-C"]);
 
-
-const TEAM_SET = new Set(["GROUP-A", "GROUP-B", "GROUP-C", ]);
-
- const AddUser = async (req, res) => {
+const AddUser = async (req, res) => {
   try {
-    const { email, name, chessNumber, category, programs, team, points = 0 } = req.body;
+    const {
+      email,
+      name,
+      chessNumber,
+      categories = [],
+      programs = [],
+      team,
+      points = 0,
+    } = req.body;
 
-    // Basic required checks
-    if (!email || !name || !category || !Array.isArray(programs) || programs.length === 0 || !team) {
+    if (
+      !email ||
+      !name ||
+      categories.length === 0 ||
+      programs.length === 0 ||
+      !team
+    ) {
       return res.status(400).json({
         success: false,
-        message: "name, email, category, programs (array), and team are required",
+        message:
+          "name, email, categories (array), programs (array), and team are required",
       });
     }
 
@@ -58,49 +70,41 @@ const TEAM_SET = new Set(["GROUP-A", "GROUP-B", "GROUP-C", ]);
       return res.status(400).json({ success: false, message: "Invalid team" });
     }
 
-    // Uniqueness by email (you can also check name if you want)
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({
+      $or: [{ email }, { chessNumber }],
+    });
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: "User with this email already exists",
+        message: "User with this email or chess number already exists",
       });
     }
 
-    // Ensure category exists
-    const categoryDoc = await Category.findById(category);
-    if (!categoryDoc) {
-      return res.status(404).json({ success: false, message: "Category not found" });
+    // Validate all categories exist
+    const categoryDocs = await Category.find({ _id: { $in: categories } });
+    if (categoryDocs.length !== categories.length) {
+      return res
+        .status(404)
+        .json({ success: false, message: "One or more categories not found" });
     }
 
-    // Ensure all selected programs exist and (optionally) belong to this category
+    // Validate programs belong to selected categories
     const programDocs = await Program.find({ _id: { $in: programs } });
-    if (programDocs.length !== programs.length) {
-      return res.status(400).json({
-        success: false,
-        message: "One or more selected programs do not exist",
-      });
-    }
-
-    // Optional business rule: each selected program must belong to the same category picked
-    const invalid = programDocs.find((p) => {
-      // p.category may be an ObjectId; compare as string
-      const catId = String(p.category);
-      return catId !== String(category);
-    });
+    const invalid = programDocs.find(
+      (p) => !categories.includes(String(p.category))
+    );
     if (invalid) {
       return res.status(400).json({
         success: false,
-        message: "All selected programs must belong to the chosen category",
+        message: "One or more programs do not belong to selected categories",
       });
     }
 
-    // Create user
     const user = await User.create({
       name,
       email,
       chessNumber,
-      category,
+      categories, // store array
       programs,
       team,
       points,
@@ -112,13 +116,14 @@ const TEAM_SET = new Set(["GROUP-A", "GROUP-B", "GROUP-C", ]);
       data: user,
     });
   } catch (error) {
-    return res.status(400).json({
-      success: false,
-      message: error.message || "Failed to create user",
-    });
+    res
+      .status(400)
+      .json({
+        success: false,
+        message: error.message || "Failed to create user",
+      });
   }
 };
-
 
 /**
  * upadate user
@@ -127,58 +132,82 @@ const TEAM_SET = new Set(["GROUP-A", "GROUP-B", "GROUP-C", ]);
 const UpdateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, category, programs, points, team, chessNumber } = req.body;
+    const {
+      name,
+      email,
+      categories = [],
+      programs = [],
+      points,
+      team,
+      chessNumber,
+    } = req.body;
 
     // Uniqueness check
     const existingUser = await User.findOne({
       _id: { $ne: id },
-      $or: [{ email }, { name }],
+      $or: [{ email }, { chessNumber }],
     });
     if (existingUser)
       return res.status(400).json({
         success: false,
-        message: "Another user with same name or email exists",
+        message: "Another user with same email or chess number exists",
       });
 
-    // Validate category
-    if (category) {
-      const catExists = await Category.findById(category);
-      if (!catExists)
-        return res.status(400).json({ success: false, message: "Invalid category" });
+    // Validate all categories exist
+    if (categories.length > 0) {
+      const categoryDocs = await Category.find({ _id: { $in: categories } });
+      if (categoryDocs.length !== categories.length)
+        return res
+          .status(400)
+          .json({ success: false, message: "Some categories are invalid" });
     }
 
     // Validate programs
-    if (programs && programs.length > 0) {
+    if (programs.length > 0) {
       const validPrograms = await Program.find({ _id: { $in: programs } });
       if (validPrograms.length !== programs.length)
-        return res.status(400).json({ success: false, message: "Some programs are invalid" });
+        return res
+          .status(400)
+          .json({ success: false, message: "Some programs are invalid" });
     }
 
-    // Update user
     const updateData = {
       name,
       email,
-      category: category || undefined,
-      programs: programs || [],
+      categories, 
+      programs,
       points,
       team,
       chessNumber,
     };
 
-    const user = await User.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+    const user = await User.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true,
+    });
 
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    if (!user)
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
 
-    res.status(200).json({ success: true, message: "User updated successfully", data: user });
+    res
+      .status(200)
+      .json({
+        success: true,
+        message: "User updated successfully",
+        data: user,
+      });
   } catch (error) {
-    console.log(error);
-    res.status(400).json({ success: false, message: error.message || "Failed to update user" });
+    console.error(error);
+    res
+      .status(400)
+      .json({
+        success: false,
+        message: error.message || "Failed to update user",
+      });
   }
 };
-
-
-
-
 
 /**
  * get users list
@@ -187,10 +216,10 @@ const UpdateUser = async (req, res) => {
 const GetUsers = async (req, res) => {
   try {
     const users = await User.find()
-      .populate("programs") 
-      .populate("category") 
+      .populate("programs")
+      .populate("categories")
       // .exec();
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1 });
 
     if (!users || users.length === 0) {
       return res.status(404).json({
@@ -216,7 +245,6 @@ const GetUsers = async (req, res) => {
 /**
  * add category
  */
-
 
 const AddCategory = async (req, res) => {
   try {
@@ -275,14 +303,12 @@ const AddCategory = async (req, res) => {
  * get category list
  */
 
-
-
 const getCategories = async (req, res) => {
   try {
     const categories = await Category.find().sort({ createdAt: -1 });
     res.status(200).json({
-      success: true,       
-      data: categories,    
+      success: true,
+      data: categories,
     });
   } catch (err) {
     res.status(500).json({
@@ -291,7 +317,6 @@ const getCategories = async (req, res) => {
     });
   }
 };
-
 
 /**
  * update points
@@ -323,7 +348,7 @@ const AddPoints = async (req, res) => {
       { new: true }
     )
       .populate("programs")
-      .populate("category"); // optional: populate related fields
+      .populate("categories"); // optional: populate related fields
 
     if (!user) {
       return res.status(404).json({
@@ -428,7 +453,7 @@ export {
   AddProgram,
   AddPoints,
   getCategories,
-  getPrograms
+  getPrograms,
 };
 
 // /*======================================== ADMIN AUTHENTICATION CONTROLLER ======================================== */
