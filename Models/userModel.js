@@ -46,7 +46,8 @@ const userSchema = new mongoose.Schema(
       // },
       {
       programId: { type: mongoose.Schema.Types.ObjectId, ref: "Program" },
-      isActive: { type: Boolean, default: false }
+      isActive: { type: Boolean, default: false },
+      grade: { type: String,default: ""}
     }
       
     ],

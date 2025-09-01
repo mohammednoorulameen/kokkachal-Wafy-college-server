@@ -604,48 +604,6 @@ const AddProgram = async (req, res) => {
  * update program
  */
 
-// const UpdateProgram = async (req, res) => {
-//   try {
-//     const { programId } = req.params;
-//     const { programName, description, category } = req.body;
-
-//     // Validate programId
-//     if (!programId) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Program ID is required",
-//       });
-//     }
-
-//     // Find the program by ID
-//     const program = await Program.findById(programId);
-//     if (!program) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Program not found",
-//       });
-//     }
-
-//     // Update fields if provided
-//     if (programName) program.programName = programName;
-//     if (description) program.description = description;
-//     if (category) program.category = category;
-
-//     await program.save();
-
-//     res.status(200).json({
-//       success: true,
-//       message: "Program updated successfully",
-//       data: program,
-//     });
-//   } catch (error) {
-//     console.error("Error updating program:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: error.message || "Failed to update program",
-//     });
-//   }
-// };
 
 // AdminController.js
 
@@ -709,55 +667,6 @@ const getPrograms = async (req, res) => {
 /**
  * Get all students in each program (Admin view)
  */
-
-
-// // GET /admin/students
-// const getAllCheckingStudents = async (req, res) => {
-//   try {
-//     const programs = await Program.find({})
-//       .populate("category", "category")
-//       .lean();
-
-//     const results = await Promise.all(
-//       programs.map(async (program) => {
-//         const students = await User.find({ programs: program._id })
-//           .sort({ points: -1, createdAt: -1 })
-//           .select("name points team chessNumber isActive email");
-
-//         return {
-//           programId: program._id,
-//           programName: program.programName,
-//           category: program.category?.category || "Uncategorized",
-//           students,
-//         };
-//       })
-//     );
-
-//     const groupedByCategory = results.reduce((acc, program) => {
-//       const cat = program.category;
-//       if (!acc[cat]) acc[cat] = [];
-//       acc[cat].push({
-//         programId: program.programId,
-//         programName: program.programName,
-//         students: program.students,
-//       });
-//       return acc;
-//     }, {});
-
-//     return res.status(200).json({
-//       success: true,
-//       data: groupedByCategory,
-//       message: "Programs with all students (admin view) fetched successfully",
-//     });
-//   } catch (error) {
-//     console.error("Error fetching all students:", error);
-//     return res.status(500).json({
-//       success: false,
-//       message: "Failed to fetch programs and students",
-//       error: error.message,
-//     });
-//   }
-// };
 
 
 const getAllCheckingStudents = async (req, res) => {
@@ -831,53 +740,19 @@ const getAllCheckingStudents = async (req, res) => {
  */
 
 
-// const toggleStudentStatus = async (req, res) => {
-//   try {
-//     const { id } = req.params; 
-
-//     const student = await User.findById(id);
-
-//     if (!student) {
-//       return res.status(404).json({ success: false, message: "Student not found" });
-//     }
-
-//     // Toggle status
-//     student.isActive = !student.isActive;
-//     await student.save();
-
-//     return res.status(200).json({
-//       success: true,
-//       message: `Student status updated to ${student.isActive ? "Active" : "Inactive"}`,
-//       student: {
-//         _id: student._id,
-//         name: student.name,
-//         chessNumber: student.chessNumber,
-//         team: student.team,
-//         points: student.points,
-//         isActive: student.isActive,
-//       },
-//     });
-//   } catch (error) {
-//     console.error("Error updating student status:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Failed to update student status",
-//       error: error.message,
-//     });
-//   }
-// };
-
-// // Toggle a student's program status 
 // const toggleProgramStatus = async (req, res) => {
 //   try {
 //     const { studentId, programId } = req.params;
+
+//     if (!mongoose.Types.ObjectId.isValid(studentId) || !mongoose.Types.ObjectId.isValid(programId)) {
+//       return res.status(400).json({ success: false, message: "Invalid ID format" });
+//     }
 
 //     const student = await User.findById(studentId);
 //     if (!student) {
 //       return res.status(404).json({ success: false, message: "Student not found" });
 //     }
 
-//     // Find the program entry in student's programs array
 //     const programEntry = student.programs.find(
 //       (p) => p.programId.toString() === programId
 //     );
@@ -886,60 +761,15 @@ const getAllCheckingStudents = async (req, res) => {
 //       return res.status(404).json({ success: false, message: "Program not found for this student" });
 //     }
 
-//     // Toggle the isActive field for this program
+//     // Toggle the isActive field
 //     programEntry.isActive = !programEntry.isActive;
 
 //     await student.save();
 
 //     return res.status(200).json({
 //       success: true,
-//       message: `Program status updated to ${programEntry.isActive ? "Active" : "Inactive"} for this student`,
-//       student,
-//     });
-//   } catch (error) {
-//     console.error("Error updating program status:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Failed to update program status",
-//       error: error.message,
-//     });
-//   }
-// };
-
-
-// Toggle a student's program status
-// const toggleProgramStatus = async (req, res) => {
-//   try {
-//     const { studentId, programId } = req.params;
-
-//     // Convert IDs to ObjectId
-//     const studentObjectId = mongoose.Types.ObjectId(studentId);
-//     const programObjectId = mongoose.Types.ObjectId(programId);
-
-//     const student = await User.findById(studentObjectId);
-//     if (!student) {
-//       return res.status(404).json({ success: false, message: "Student not found" });
-//     }
-
-//     // Find the program entry in student's programs array
-//     const programEntry = student.programs.find(
-//       (p) => p.programId.toString() === programObjectId.toString()
-//     );
-
-//     if (!programEntry) {
-//       return res.status(404).json({ success: false, message: "Program not found for this student" });
-//     }
-
-//     // Toggle the isActive field for this program
-//     programEntry.isActive = !programEntry.isActive;
-
-//     await student.save();
-
-//     return res.status(200).json({
-//       success: true,
-//       message: `Program status updated to ${programEntry.isActive ? "Active" : "Inactive"} for this student`,
+//       message: `Program status updated to ${programEntry.isActive ? "Active" : "Inactive"}`,
 //       program: programEntry,
-//       studentId: student._id,
 //     });
 //   } catch (error) {
 //     console.error("Error updating program status:", error);
@@ -954,6 +784,7 @@ const getAllCheckingStudents = async (req, res) => {
 const toggleProgramStatus = async (req, res) => {
   try {
     const { studentId, programId } = req.params;
+    const { grade } = req.body; // receive grade from frontend
 
     if (!mongoose.Types.ObjectId.isValid(studentId) || !mongoose.Types.ObjectId.isValid(programId)) {
       return res.status(400).json({ success: false, message: "Invalid ID format" });
@@ -975,11 +806,16 @@ const toggleProgramStatus = async (req, res) => {
     // Toggle the isActive field
     programEntry.isActive = !programEntry.isActive;
 
+    // Update the grade if provided
+    if (grade !== undefined) {
+      programEntry.grade = grade;
+    }
+
     await student.save();
 
     return res.status(200).json({
       success: true,
-      message: `Program status updated to ${programEntry.isActive ? "Active" : "Inactive"}`,
+      message: `Program updated: ${programEntry.isActive ? "Active" : "Inactive"}${grade ? `, Grade: ${grade}` : ""}`,
       program: programEntry,
     });
   } catch (error) {
@@ -991,7 +827,6 @@ const toggleProgramStatus = async (req, res) => {
     });
   }
 };
-
 
 
 export {
