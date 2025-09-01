@@ -219,9 +219,105 @@ const AddUser = async (req, res) => {
  */
 
 
+// const UpdateUser = async (req, res) => {
+//   try {
+//     const { id } = req.params
+//     const {
+//       name,
+//       email,
+//       categories = [],
+//       programs = [], // array of programIds
+//       points,
+//       team,
+//       chessNumber,
+//     } = req.body
+
+//     // Check if another user has the same email or chessNumber
+//     const existingUser = await User.findOne({
+//       _id: { $ne: id },
+//       $or: [{ email }, { chessNumber }],
+//     })
+//     if (existingUser)
+//       return res.status(400).json({
+//         success: false,
+//         message: "Another user with same email or chess number exists",
+//       })
+
+//     // Validate categories
+//     if (categories.length > 0) {
+//       const categoryDocs = await Category.find({ _id: { $in: categories } })
+//       if (categoryDocs.length !== categories.length)
+//         return res
+//           .status(400)
+//           .json({ success: false, message: "Some categories are invalid" })
+//     }
+
+//     // Validate programs (extract IDs first)
+//     const programIds = programs.map((p) => new mongoose.Types.ObjectId(p))
+//     if (programIds.length > 0) {
+//       const validPrograms = await Program.find({ _id: { $in: programIds } })
+//       if (validPrograms.length !== programIds.length)
+//         return res
+//           .status(400)
+//           .json({ success: false, message: "Some programs are invalid" })
+//     }
+
+//     // Validate team (if required)
+//     const validTeams = ["RADIANCE", "BRILLIANCE", "RESILIENCE"]
+//     if (team && !validTeams.includes(team))
+//       return res
+//         .status(400)
+//         .json({ success: false, message: "Invalid team value" })
+
+//         // Prepare programs array for schema
+//         const programsData = programIds.map((pId) => ({ programId: pId,isActive:false }))
+//         console.log(programsData,"---------------------yyyyyyyyyyyy------------")
+
+//     const updateData = {
+//       name,
+//       email,
+//       categories,
+//       programs: programsData,
+//       points,
+//       team,
+//       chessNumber,
+//     }
+
+//     const user = await User.findByIdAndUpdate(id, updateData, {
+//       new: true,
+//       runValidators: true,
+//     })
+
+//     if (!user)
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "User not found" })
+
+//     res.status(200).json({
+//       success: true,
+//       message: "User updated successfully",
+//       data: user,
+//     })
+//   } catch (error) {
+//     console.error("Error updating user:", error)
+//     res.status(400).json({
+//       success: false,
+//       message: error.message || "Failed to update user",
+//     })
+//   }
+// }
+
+
+
+
+
+
+
+
+
 const UpdateUser = async (req, res) => {
   try {
-    const { id } = req.params
+    const { id } = req.params;
     const {
       name,
       email,
@@ -230,81 +326,105 @@ const UpdateUser = async (req, res) => {
       points,
       team,
       chessNumber,
-    } = req.body
+    } = req.body;
 
-    // Check if another user has the same email or chessNumber
+    // Find existing user
+    const user = await User.findById(id);
+    if (!user)
+      return res.status(404).json({ success: false, message: "User not found" });
+
+    // Check for duplicate email or chessNumber
     const existingUser = await User.findOne({
       _id: { $ne: id },
       $or: [{ email }, { chessNumber }],
-    })
+    });
     if (existingUser)
       return res.status(400).json({
         success: false,
         message: "Another user with same email or chess number exists",
-      })
+      });
 
     // Validate categories
     if (categories.length > 0) {
-      const categoryDocs = await Category.find({ _id: { $in: categories } })
+      const categoryDocs = await Category.find({ _id: { $in: categories } });
       if (categoryDocs.length !== categories.length)
-        return res
-          .status(400)
-          .json({ success: false, message: "Some categories are invalid" })
+        return res.status(400).json({ success: false, message: "Some categories are invalid" });
+      user.categories = categories;
     }
 
-    // Validate programs (extract IDs first)
-    const programIds = programs.map((p) => new mongoose.Types.ObjectId(p))
-    if (programIds.length > 0) {
-      const validPrograms = await Program.find({ _id: { $in: programIds } })
+    // Validate programs
+    if (programs.length > 0) {
+      const programIds = programs.map((p) => new mongoose.Types.ObjectId(p));
+      const validPrograms = await Program.find({ _id: { $in: programIds } });
       if (validPrograms.length !== programIds.length)
-        return res
-          .status(400)
-          .json({ success: false, message: "Some programs are invalid" })
+        return res.status(400).json({ success: false, message: "Some programs are invalid" });
+
+      // Merge with existing programs
+      const mergedPrograms = programIds.map((pId) => {
+        const existingProgram = user.programs.find(
+          (p) => p.programId.toString() === pId.toString()
+        );
+        return {
+          programId: pId,
+          isActive: existingProgram ? existingProgram.isActive : false, // keep previous value
+        };
+      });
+
+      user.programs = mergedPrograms;
     }
 
-    // Validate team (if required)
-    const validTeams = ["RADIANCE", "BRILLIANCE", "RESILIENCE"]
+    // Validate team
+    const validTeams = ["RADIANCE", "BRILLIANCE", "RESILIENCE"];
     if (team && !validTeams.includes(team))
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid team value" })
+      return res.status(400).json({ success: false, message: "Invalid team value" });
 
-    // Prepare programs array for schema
-    const programsData = programIds.map((pId) => ({ programId: pId, isActive: false }))
+    // Update other fields
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (points !== undefined) user.points = points;
+    if (team) user.team = team;
+    if (chessNumber) user.chessNumber = chessNumber;
 
-    const updateData = {
-      name,
-      email,
-      categories,
-      programs: programsData,
-      points,
-      team,
-      chessNumber,
-    }
-
-    const user = await User.findByIdAndUpdate(id, updateData, {
-      new: true,
-      runValidators: true,
-    })
-
-    if (!user)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" })
+    await user.save();
 
     res.status(200).json({
       success: true,
       message: "User updated successfully",
       data: user,
-    })
+    });
   } catch (error) {
-    console.error("Error updating user:", error)
+    console.error("Error updating user:", error);
     res.status(400).json({
       success: false,
       message: error.message || "Failed to update user",
-    })
+    });
   }
-}
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // const UpdateUser = async (req, res) => {
 //   try {
 //     const { id } = req.params;
@@ -852,7 +972,8 @@ const toggleProgramStatus = async (req, res) => {
 
     // Toggle the isActive field
     programEntry.isActive = !programEntry.isActive;
-
+      console.log(programEntry.isActive,"-------------");
+      
     // Update grade if provided
     if (grade !== undefined) programEntry.grade = grade;
 

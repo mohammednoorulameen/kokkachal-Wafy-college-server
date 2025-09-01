@@ -386,7 +386,7 @@ const getWinningProgramAndStudents = async (req, res) => {
             };
           })
           .filter(Boolean) // remove students without active program
-          .sort((a, b) => b.points - a.points) // sort by program.points descending
+          .sort((a, b) => a.points - b.points) // sort by program.points descending
           .slice(0, 4); // limit to top 4
 
         return {
