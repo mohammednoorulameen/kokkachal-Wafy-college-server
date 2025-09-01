@@ -270,7 +270,7 @@ const UpdateUser = async (req, res) => {
         .json({ success: false, message: "Invalid team value" })
 
     // Prepare programs array for schema
-    const programsData = programIds.map((pId) => ({ programId: pId, isActive: true }))
+    const programsData = programIds.map((pId) => ({ programId: pId, isActive: false }))
 
     const updateData = {
       name,
