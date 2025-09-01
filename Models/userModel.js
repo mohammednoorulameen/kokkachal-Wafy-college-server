@@ -39,6 +39,7 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
     programs: [
       // {
       //   type: mongoose.Schema.Types.ObjectId,
@@ -47,7 +48,8 @@ const userSchema = new mongoose.Schema(
       {
       programId: { type: mongoose.Schema.Types.ObjectId, ref: "Program" },
       isActive: { type: Boolean, default: false },
-      grade: { type: String,default: ""}
+      grade: { type: String,default: ""},
+      points: { type: Number, default: 0 }
     }
       
     ],

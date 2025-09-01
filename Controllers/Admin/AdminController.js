@@ -680,7 +680,7 @@ const getAllCheckingStudents = async (req, res) => {
         // Filter users who have this program and isActive: true for this program
         const students = await User.find({
           "programs.programId": program._id,
-          "programs.isActive": true,
+          "programs.isActive": false,
         })
           .sort({ points: -1, createdAt: -1 })
           .select("name points team chessNumber email programs");
@@ -781,10 +781,57 @@ const getAllCheckingStudents = async (req, res) => {
 //   }
 // };
 
+// const toggleProgramStatus = async (req, res) => {
+//   try {
+//     const { studentId, programId } = req.params;
+//     const { grade } = req.body; // receive grade from frontend
+
+//     if (!mongoose.Types.ObjectId.isValid(studentId) || !mongoose.Types.ObjectId.isValid(programId)) {
+//       return res.status(400).json({ success: false, message: "Invalid ID format" });
+//     }
+
+//     const student = await User.findById(studentId);
+//     if (!student) {
+//       return res.status(404).json({ success: false, message: "Student not found" });
+//     }
+
+//     const programEntry = student.programs.find(
+//       (p) => p.programId.toString() === programId
+//     );
+
+//     if (!programEntry) {
+//       return res.status(404).json({ success: false, message: "Program not found for this student" });
+//     }
+
+//     // Toggle the isActive field
+//     programEntry.isActive = !programEntry.isActive;
+
+//     // Update the grade if provided
+//     if (grade !== undefined) {
+//       programEntry.grade = grade;
+//     }
+
+//     await student.save();
+
+//     return res.status(200).json({
+//       success: true,
+//       message: `Program updated: ${programEntry.isActive ? "Active" : "Inactive"}${grade ? `, Grade: ${grade}` : ""}`,
+//       program: programEntry,
+//     });
+//   } catch (error) {
+//     console.error("Error updating program status:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to update program status",
+//       error: error.message,
+//     });
+//   }
+// };
+
 const toggleProgramStatus = async (req, res) => {
   try {
     const { studentId, programId } = req.params;
-    const { grade } = req.body; // receive grade from frontend
+    const { grade, points } = req.body; 
 
     if (!mongoose.Types.ObjectId.isValid(studentId) || !mongoose.Types.ObjectId.isValid(programId)) {
       return res.status(400).json({ success: false, message: "Invalid ID format" });
@@ -806,16 +853,17 @@ const toggleProgramStatus = async (req, res) => {
     // Toggle the isActive field
     programEntry.isActive = !programEntry.isActive;
 
-    // Update the grade if provided
-    if (grade !== undefined) {
-      programEntry.grade = grade;
-    }
+    // Update grade if provided
+    if (grade !== undefined) programEntry.grade = grade;
+
+    // Update points if provided
+    if (points !== undefined) programEntry.points = points;
 
     await student.save();
 
     return res.status(200).json({
       success: true,
-      message: `Program updated: ${programEntry.isActive ? "Active" : "Inactive"}${grade ? `, Grade: ${grade}` : ""}`,
+      message: `Program updated: ${programEntry.isActive ? "Active" : "Inactive"}${grade ? `, Grade: ${grade}` : ""}${points !== undefined ? `, Points: ${points}` : ""}`,
       program: programEntry,
     });
   } catch (error) {
@@ -827,6 +875,7 @@ const toggleProgramStatus = async (req, res) => {
     });
   }
 };
+
 
 
 export {
