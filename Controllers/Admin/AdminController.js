@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import User from "../../Models/userModel.js";
 import Category from "../../Models/categoriesModel.js";
 import Program from "../../Models/programsModel.js";
+import mongoose from "mongoose";
 
 /**
  * default admin
@@ -47,22 +48,16 @@ const AddUser = async (req, res) => {
       name,
       chessNumber,
       categories = [],
-      programs = [],
+      programs = [], // This is now an array of objects
       team,
       points = 0,
     } = req.body;
 
-    if (
-      !email ||
-      !name ||
-      categories.length === 0 ||
-      programs.length === 0 ||
-      !team
-    ) {
+    // 1. Basic validation remains the same, but now check for array of objects
+    if (!email || !name || categories.length === 0 || programs.length === 0 || !team) {
       return res.status(400).json({
         success: false,
-        message:
-          "name, email, categories (array), programs (array), and team are required",
+        message: "name, email, categories (array), programs (array), and team are required",
       });
     }
 
@@ -80,32 +75,40 @@ const AddUser = async (req, res) => {
       });
     }
 
-    // Validate all categories exist
+    // Extract just the program IDs for validation
+    const programIds = programs.map(p => p.programId);
+
+    // 2. Validate all categories exist
     const categoryDocs = await Category.find({ _id: { $in: categories } });
     if (categoryDocs.length !== categories.length) {
-      return res
-        .status(404)
-        .json({ success: false, message: "One or more categories not found" });
+      return res.status(404).json({ success: false, message: "One or more categories not found" });
     }
 
-    // Validate programs belong to selected categories
-    const programDocs = await Program.find({ _id: { $in: programs } });
-    const invalid = programDocs.find(
+    // 3. Validate programs belong to selected categories using the extracted IDs
+    const programDocs = await Program.find({ _id: { $in: programIds } });
+
+    // Check if all requested program IDs are valid
+    if (programDocs.length !== programIds.length) {
+      return res.status(404).json({ success: false, message: "One or more programs not found" });
+    }
+
+    const invalidProgram = programDocs.find(
       (p) => !categories.includes(String(p.category))
     );
-    if (invalid) {
+    if (invalidProgram) {
       return res.status(400).json({
         success: false,
         message: "One or more programs do not belong to selected categories",
       });
     }
 
+    // 4. Create the new user with the full programs array
     const user = await User.create({
       name,
       email,
       chessNumber,
-      categories, // store array
-      programs,
+      categories,
+      programs, // This now correctly saves the array of objects
       team,
       points,
     });
@@ -116,98 +119,271 @@ const AddUser = async (req, res) => {
       data: user,
     });
   } catch (error) {
-    res
-      .status(400)
-      .json({
-        success: false,
-        message: error.message || "Failed to create user",
-      });
+    console.error(error); // Log the full error for debugging
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to create user",
+    });
   }
 };
+
+// const TEAM_SET = new Set(["RADIANCE", "BRILLIANCE", "RESILIENCE"]);
+
+// const AddUser = async (req, res) => {
+//   try {
+//     const {
+//       email,
+//       name,
+//       chessNumber,
+//       categories = [],
+//       programs = [],
+//       team,
+//       points = 0,
+//     } = req.body;
+
+//     if (
+//       !email ||
+//       !name ||
+//       categories.length === 0 ||
+//       programs.length === 0 ||
+//       !team
+//     ) {
+//       return res.status(400).json({
+//         success: false,
+//         message:
+//           "name, email, categories (array), programs (array), and team are required",
+//       });
+//     }
+
+//     if (!TEAM_SET.has(team)) {
+//       return res.status(400).json({ success: false, message: "Invalid team" });
+//     }
+
+//     const existingUser = await User.findOne({
+//       $or: [{ email }, { chessNumber }],
+//     });
+//     if (existingUser) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "User with this email or chess number already exists",
+//       });
+//     }
+
+//     // Validate all categories exist
+//     const categoryDocs = await Category.find({ _id: { $in: categories } });
+//     if (categoryDocs.length !== categories.length) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "One or more categories not found" });
+//     }
+
+//     // Validate programs belong to selected categories
+//     const programDocs = await Program.find({ _id: { $in: programs } });
+//     const invalid = programDocs.find(
+//       (p) => !categories.includes(String(p.category))
+//     );
+//     if (invalid) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "One or more programs do not belong to selected categories",
+//       });
+//     }
+
+//     const user = await User.create({
+//       name,
+//       email,
+//       chessNumber,
+//       categories, // store array
+//       programs,
+//       team,
+//       points,
+//     });
+
+//     return res.status(201).json({
+//       success: true,
+//       message: "User created successfully",
+//       data: user,
+//     });
+//   } catch (error) {
+//     res
+//       .status(400)
+//       .json({
+//         success: false,
+//         message: error.message || "Failed to create user",
+//       });
+//   }
+// };
 
 /**
  * upadate user
  */
 
+
 const UpdateUser = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params
     const {
       name,
       email,
       categories = [],
-      programs = [],
+      programs = [], // array of programIds
       points,
       team,
       chessNumber,
-    } = req.body;
+    } = req.body
 
-    // Uniqueness check
+    // Check if another user has the same email or chessNumber
     const existingUser = await User.findOne({
       _id: { $ne: id },
       $or: [{ email }, { chessNumber }],
-    });
+    })
     if (existingUser)
       return res.status(400).json({
         success: false,
         message: "Another user with same email or chess number exists",
-      });
+      })
 
-    // Validate all categories exist
+    // Validate categories
     if (categories.length > 0) {
-      const categoryDocs = await Category.find({ _id: { $in: categories } });
+      const categoryDocs = await Category.find({ _id: { $in: categories } })
       if (categoryDocs.length !== categories.length)
         return res
           .status(400)
-          .json({ success: false, message: "Some categories are invalid" });
+          .json({ success: false, message: "Some categories are invalid" })
     }
 
-    // Validate programs
-    if (programs.length > 0) {
-      const validPrograms = await Program.find({ _id: { $in: programs } });
-      if (validPrograms.length !== programs.length)
+    // Validate programs (extract IDs first)
+    const programIds = programs.map((p) => new mongoose.Types.ObjectId(p))
+    if (programIds.length > 0) {
+      const validPrograms = await Program.find({ _id: { $in: programIds } })
+      if (validPrograms.length !== programIds.length)
         return res
           .status(400)
-          .json({ success: false, message: "Some programs are invalid" });
+          .json({ success: false, message: "Some programs are invalid" })
     }
+
+    // Validate team (if required)
+    const validTeams = ["RADIANCE", "BRILLIANCE", "RESILIENCE"]
+    if (team && !validTeams.includes(team))
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid team value" })
+
+    // Prepare programs array for schema
+    const programsData = programIds.map((pId) => ({ programId: pId, isActive: true }))
 
     const updateData = {
       name,
       email,
-      categories, 
-      programs,
+      categories,
+      programs: programsData,
       points,
       team,
       chessNumber,
-    };
+    }
 
     const user = await User.findByIdAndUpdate(id, updateData, {
       new: true,
       runValidators: true,
-    });
+    })
 
     if (!user)
       return res
         .status(404)
-        .json({ success: false, message: "User not found" });
+        .json({ success: false, message: "User not found" })
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "User updated successfully",
-        data: user,
-      });
+    res.status(200).json({
+      success: true,
+      message: "User updated successfully",
+      data: user,
+    })
   } catch (error) {
-    console.error(error);
-    res
-      .status(400)
-      .json({
-        success: false,
-        message: error.message || "Failed to update user",
-      });
+    console.error("Error updating user:", error)
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to update user",
+    })
   }
-};
+}
+// const UpdateUser = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const {
+//       name,
+//       email,
+//       categories = [],
+//       programs = [],
+//       points,
+//       team,
+//       chessNumber,
+//     } = req.body;
+
+//     // Uniqueness check
+//     const existingUser = await User.findOne({
+//       _id: { $ne: id },
+//       $or: [{ email }, { chessNumber }],
+//     });
+//     if (existingUser)
+//       return res.status(400).json({
+//         success: false,
+//         message: "Another user with same email or chess number exists",
+//       });
+
+//     // Validate all categories exist
+//     if (categories.length > 0) {
+//       const categoryDocs = await Category.find({ _id: { $in: categories } });
+//       if (categoryDocs.length !== categories.length)
+//         return res
+//           .status(400)
+//           .json({ success: false, message: "Some categories are invalid" });
+//     }
+
+//     // Validate programs
+//     if (programs.length > 0) {
+//       const validPrograms = await Program.find({ _id: { $in: programs } });
+//       if (validPrograms.length !== programs.length)
+//         return res
+//           .status(400)
+//           .json({ success: false, message: "Some programs are invalid" });
+//     }
+
+//     const updateData = {
+//       name,
+//       email,
+//       categories, 
+//       programs,
+//       points,
+//       team,
+//       chessNumber,
+//     };
+
+//     const user = await User.findByIdAndUpdate(id, updateData, {
+//       new: true,
+//       runValidators: true,
+//     });
+
+//     if (!user)
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "User not found" });
+
+//     res
+//       .status(200)
+//       .json({
+//         success: true,
+//         message: "User updated successfully",
+//         data: user,
+//       });
+//   } catch (error) {
+//     console.error(error);
+//     res
+//       .status(400)
+//       .json({
+//         success: false,
+//         message: error.message || "Failed to update user",
+//       });
+//   }
+// };
 
 /**
  * get users list
@@ -425,6 +601,93 @@ const AddProgram = async (req, res) => {
 };
 
 /**
+ * update program
+ */
+
+// const UpdateProgram = async (req, res) => {
+//   try {
+//     const { programId } = req.params;
+//     const { programName, description, category } = req.body;
+
+//     // Validate programId
+//     if (!programId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Program ID is required",
+//       });
+//     }
+
+//     // Find the program by ID
+//     const program = await Program.findById(programId);
+//     if (!program) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Program not found",
+//       });
+//     }
+
+//     // Update fields if provided
+//     if (programName) program.programName = programName;
+//     if (description) program.description = description;
+//     if (category) program.category = category;
+
+//     await program.save();
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Program updated successfully",
+//       data: program,
+//     });
+//   } catch (error) {
+//     console.error("Error updating program:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: error.message || "Failed to update program",
+//     });
+//   }
+// };
+
+// AdminController.js
+
+const UpdateProgram = async (req, res) => {
+  try {
+    const { programId } = req.params;
+    const { programName, description, category } = req.body;
+    console.log('first')
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(programId)) {
+      return res.status(400).json({ success: false, message: "Invalid program ID" });
+    }
+
+    // Update program
+    const updatedProgram = await Program.findByIdAndUpdate(
+      programId,
+      { programName, description, category },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedProgram) {
+      return res.status(404).json({ success: false, message: "Program not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Program updated successfully",
+      data: updatedProgram,
+    });
+  } catch (error) {
+    console.error("Error updating program:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update program",
+      error: error.message,
+    });
+  }
+};
+
+
+
+/**
  * get programs list
  */
 
@@ -443,6 +706,293 @@ const getPrograms = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+/**
+ * Get all students in each program (Admin view)
+ */
+
+
+// // GET /admin/students
+// const getAllCheckingStudents = async (req, res) => {
+//   try {
+//     const programs = await Program.find({})
+//       .populate("category", "category")
+//       .lean();
+
+//     const results = await Promise.all(
+//       programs.map(async (program) => {
+//         const students = await User.find({ programs: program._id })
+//           .sort({ points: -1, createdAt: -1 })
+//           .select("name points team chessNumber isActive email");
+
+//         return {
+//           programId: program._id,
+//           programName: program.programName,
+//           category: program.category?.category || "Uncategorized",
+//           students,
+//         };
+//       })
+//     );
+
+//     const groupedByCategory = results.reduce((acc, program) => {
+//       const cat = program.category;
+//       if (!acc[cat]) acc[cat] = [];
+//       acc[cat].push({
+//         programId: program.programId,
+//         programName: program.programName,
+//         students: program.students,
+//       });
+//       return acc;
+//     }, {});
+
+//     return res.status(200).json({
+//       success: true,
+//       data: groupedByCategory,
+//       message: "Programs with all students (admin view) fetched successfully",
+//     });
+//   } catch (error) {
+//     console.error("Error fetching all students:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Failed to fetch programs and students",
+//       error: error.message,
+//     });
+//   }
+// };
+
+
+const getAllCheckingStudents = async (req, res) => {
+  try {
+    const programs = await Program.find({})
+      .populate("category", "category")
+      .lean();
+
+    const results = await Promise.all(
+      programs.map(async (program) => {
+        // Filter users who have this program and isActive: true for this program
+        const students = await User.find({
+          "programs.programId": program._id,
+          "programs.isActive": true,
+        })
+          .sort({ points: -1, createdAt: -1 })
+          .select("name points team chessNumber email programs");
+
+        // Optional: Only keep the relevant program object in the response
+        const filteredStudents = students.map((student) => ({
+          _id: student._id,
+          name: student.name,
+          chessNumber: student.chessNumber,
+          email: student.email,
+          team: student.team,
+          points: student.points,
+          program: student.programs.find(
+            (p) => p.programId.toString() === program._id.toString()
+          ),
+        }));
+
+        return {
+          programId: program._id,
+          programName: program.programName,
+          category: program.category?.category || "Uncategorized",
+          students: filteredStudents,
+        };
+      })
+    );
+
+    const groupedByCategory = results.reduce((acc, program) => {
+      const cat = program.category;
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push({
+        programId: program.programId,
+        programName: program.programName,
+        students: program.students,
+      });
+      return acc;
+    }, {});
+
+    return res.status(200).json({
+      success: true,
+      data: groupedByCategory,
+      message: "Programs with all active students fetched successfully",
+    });
+  } catch (error) {
+    console.error("Error fetching all students:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch programs and students",
+      error: error.message,
+    });
+  }
+};
+
+
+
+/**
+ * change status
+ */
+
+
+// const toggleStudentStatus = async (req, res) => {
+//   try {
+//     const { id } = req.params; 
+
+//     const student = await User.findById(id);
+
+//     if (!student) {
+//       return res.status(404).json({ success: false, message: "Student not found" });
+//     }
+
+//     // Toggle status
+//     student.isActive = !student.isActive;
+//     await student.save();
+
+//     return res.status(200).json({
+//       success: true,
+//       message: `Student status updated to ${student.isActive ? "Active" : "Inactive"}`,
+//       student: {
+//         _id: student._id,
+//         name: student.name,
+//         chessNumber: student.chessNumber,
+//         team: student.team,
+//         points: student.points,
+//         isActive: student.isActive,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Error updating student status:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to update student status",
+//       error: error.message,
+//     });
+//   }
+// };
+
+// // Toggle a student's program status 
+// const toggleProgramStatus = async (req, res) => {
+//   try {
+//     const { studentId, programId } = req.params;
+
+//     const student = await User.findById(studentId);
+//     if (!student) {
+//       return res.status(404).json({ success: false, message: "Student not found" });
+//     }
+
+//     // Find the program entry in student's programs array
+//     const programEntry = student.programs.find(
+//       (p) => p.programId.toString() === programId
+//     );
+
+//     if (!programEntry) {
+//       return res.status(404).json({ success: false, message: "Program not found for this student" });
+//     }
+
+//     // Toggle the isActive field for this program
+//     programEntry.isActive = !programEntry.isActive;
+
+//     await student.save();
+
+//     return res.status(200).json({
+//       success: true,
+//       message: `Program status updated to ${programEntry.isActive ? "Active" : "Inactive"} for this student`,
+//       student,
+//     });
+//   } catch (error) {
+//     console.error("Error updating program status:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to update program status",
+//       error: error.message,
+//     });
+//   }
+// };
+
+
+// Toggle a student's program status
+// const toggleProgramStatus = async (req, res) => {
+//   try {
+//     const { studentId, programId } = req.params;
+
+//     // Convert IDs to ObjectId
+//     const studentObjectId = mongoose.Types.ObjectId(studentId);
+//     const programObjectId = mongoose.Types.ObjectId(programId);
+
+//     const student = await User.findById(studentObjectId);
+//     if (!student) {
+//       return res.status(404).json({ success: false, message: "Student not found" });
+//     }
+
+//     // Find the program entry in student's programs array
+//     const programEntry = student.programs.find(
+//       (p) => p.programId.toString() === programObjectId.toString()
+//     );
+
+//     if (!programEntry) {
+//       return res.status(404).json({ success: false, message: "Program not found for this student" });
+//     }
+
+//     // Toggle the isActive field for this program
+//     programEntry.isActive = !programEntry.isActive;
+
+//     await student.save();
+
+//     return res.status(200).json({
+//       success: true,
+//       message: `Program status updated to ${programEntry.isActive ? "Active" : "Inactive"} for this student`,
+//       program: programEntry,
+//       studentId: student._id,
+//     });
+//   } catch (error) {
+//     console.error("Error updating program status:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to update program status",
+//       error: error.message,
+//     });
+//   }
+// };
+
+const toggleProgramStatus = async (req, res) => {
+  try {
+    const { studentId, programId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(studentId) || !mongoose.Types.ObjectId.isValid(programId)) {
+      return res.status(400).json({ success: false, message: "Invalid ID format" });
+    }
+
+    const student = await User.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ success: false, message: "Student not found" });
+    }
+
+    const programEntry = student.programs.find(
+      (p) => p.programId.toString() === programId
+    );
+
+    if (!programEntry) {
+      return res.status(404).json({ success: false, message: "Program not found for this student" });
+    }
+
+    // Toggle the isActive field
+    programEntry.isActive = !programEntry.isActive;
+
+    await student.save();
+
+    return res.status(200).json({
+      success: true,
+      message: `Program status updated to ${programEntry.isActive ? "Active" : "Inactive"}`,
+      program: programEntry,
+    });
+  } catch (error) {
+    console.error("Error updating program status:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update program status",
+      error: error.message,
+    });
+  }
+};
+
+
 
 export {
   DefaultAdmin,
@@ -454,6 +1004,10 @@ export {
   AddPoints,
   getCategories,
   getPrograms,
+  getAllCheckingStudents,
+  toggleProgramStatus,
+  UpdateProgram
+
 };
 
 // /*======================================== ADMIN AUTHENTICATION CONTROLLER ======================================== */

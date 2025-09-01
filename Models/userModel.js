@@ -40,10 +40,15 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
     programs: [
+      // {
+      //   type: mongoose.Schema.Types.ObjectId,
+      //   ref: "Program",
+      // },
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Program",
-      },
+      programId: { type: mongoose.Schema.Types.ObjectId, ref: "Program" },
+      isActive: { type: Boolean, default: false }
+    }
+      
     ],
     team: {
       type: String,

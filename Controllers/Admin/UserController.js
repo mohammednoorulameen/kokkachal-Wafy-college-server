@@ -234,31 +234,98 @@ const getWinningStudentsByTeam = async (req, res) => {
  * winning studend each program
  */
 
+
+// const getWinningProgramAndStudents = async (req, res) => {
+//   try {
+//     // Step 1: Fetch all programs with their categories
+//     const programs = await Program.find({})
+//       .populate("category", "category") // only fetch category name
+//       .lean();
+
+//     // Step 2: Fetch top 4 students for each program
+//     const results = await Promise.all(
+//       programs.map(async (program) => {
+//         const topStudents = await User.find({ programs: program._id })
+//           .sort({ points: -1, createdAt: -1 }) // sort by points then by newest
+//           .limit(4)
+//           .select("name points team chessNumber"); // pick relevant fields
+
+//         return {
+//           programId: program._id,
+//           programName: program.programName,
+//           category: program.category?.category || "Uncategorized",
+//           topStudents,
+//         };
+//       })
+//     );
+
+//     // Step 3: Group programs by category
+//     const groupedByCategory = results.reduce((acc, program) => {
+//       const cat = program.category;
+//       if (!acc[cat]) acc[cat] = [];
+//       acc[cat].push({
+//         programId: program.programId,
+//         programName: program.programName,
+//         topStudents: program.topStudents,
+//       });
+//       return acc;
+//     }, {});
+
+//     return res.status(200).json({
+//       success: true,
+//       data: groupedByCategory,
+//       message: "Programs with top students fetched successfully",
+//     });
+//   } catch (error) {
+//     console.error("Error fetching programs and students:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Failed to fetch programs and top students",
+//       error: error.message,
+//     });
+//   }
+// };
 const getWinningProgramAndStudents = async (req, res) => {
   try {
-    // Step 1: Fetch all programs with their categories
     const programs = await Program.find({})
-      .populate("category", "category") // only fetch category name
+      .populate("category", "category")
       .lean();
 
-    // Step 2: Fetch top 4 students for each program
     const results = await Promise.all(
       programs.map(async (program) => {
-        const topStudents = await User.find({ programs: program._id })
-          .sort({ points: -1, createdAt: -1 }) // sort by points then by newest
+        const topStudents = await User.find({
+          programs: { $elemMatch: { programId: program._id, isActive: true } }
+        })
+          .sort({ points: -1, createdAt: -1 })
           .limit(4)
-          .select("name points team chessNumber"); // pick relevant fields
+          .select("name points team chessNumber programs");
+
+        const mappedStudents = topStudents.map((student) => {
+          const activeProgram = student.programs.find(
+            (p) => p.programId.toString() === program._id.toString() && p.isActive
+          );
+
+          if (!activeProgram) return null;
+
+          return {
+            _id: student._id,
+            name: student.name,
+            chessNumber: student.chessNumber,
+            team: student.team,
+            points: student.points,
+            program: activeProgram,
+          };
+        }).filter(Boolean); // remove students without active program
 
         return {
           programId: program._id,
           programName: program.programName,
           category: program.category?.category || "Uncategorized",
-          topStudents,
+          topStudents: mappedStudents,
         };
       })
     );
 
-    // Step 3: Group programs by category
     const groupedByCategory = results.reduce((acc, program) => {
       const cat = program.category;
       if (!acc[cat]) acc[cat] = [];

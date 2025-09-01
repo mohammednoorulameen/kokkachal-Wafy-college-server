@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 
-let MONGODB_URL =
-  "mongodb+srv://noorulameen8606_db_user:uvpNKZYNRui4t5Zj@cluster0.88fdf49.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+let MONGODB_URL ="mongodb+srv://noorulameen8606_db_user:uvpNKZYNRui4t5Zj@cluster0.88fdf49.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
 const connectDB = async () => {
   mongoose.connection.on("connected", () => {
