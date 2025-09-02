@@ -315,14 +315,105 @@ const AddUser = async (req, res) => {
 
 
 
+// const UpdateUser = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const {
+//       name,
+//       email,
+//       categories = [],
+//       programs = [], // array of programIds
+//       points,
+//       team,
+//       chessNumber,
+//     } = req.body;
+
+//     // Find existing user
+//     const user = await User.findById(id);
+//     if (!user)
+//       return res.status(404).json({ success: false, message: "User not found" });
+
+//     // Check for duplicate email or chessNumber
+//     const existingUser = await User.findOne({
+//       _id: { $ne: id },
+//       $or: [{ email }, { chessNumber }],
+//     });
+//     if (existingUser)
+//       return res.status(400).json({
+//         success: false,
+//         message: "Another user with same email or chess number exists",
+//       });
+
+//     // Validate categories
+//     if (categories.length > 0) {
+//       const categoryDocs = await Category.find({ _id: { $in: categories } });
+//       if (categoryDocs.length !== categories.length)
+//         return res.status(400).json({ success: false, message: "Some categories are invalid" });
+//       user.categories = categories;
+//     }
+
+//     // Validate programs
+//     if (programs.length > 0) {
+//       const programIds = programs.map((p) => new mongoose.Types.ObjectId(p));
+//       const validPrograms = await Program.find({ _id: { $in: programIds } });
+//       if (validPrograms.length !== programIds.length)
+//         return res.status(400).json({ success: false, message: "Some programs are invalid" });
+
+//       // Merge with existing programs
+//       const mergedPrograms = programIds.map((pId) => {
+//         const existingProgram = user.programs.find(
+//           (p) => p.programId.toString() === pId.toString()
+//         );
+//         return {
+//           programId: pId,
+//           isActive: existingProgram ? existingProgram.isActive : false, // keep previous value
+//         };
+//       });
+
+//       user.programs = mergedPrograms;
+//     }
+
+//     // Validate team
+//     const validTeams = ["RADIANCE", "BRILLIANCE", "RESILIENCE"];
+//     if (team && !validTeams.includes(team))
+//       return res.status(400).json({ success: false, message: "Invalid team value" });
+
+//     // Update other fields
+//     if (name) user.name = name;
+//     if (email) user.email = email;
+//     if (points !== undefined) user.points = points;
+//     if (team) user.team = team;
+//     if (chessNumber) user.chessNumber = chessNumber;
+
+//     await user.save();
+
+//     res.status(200).json({
+//       success: true,
+//       message: "User updated successfully",
+//       data: user,
+//     });
+//   } catch (error) {
+//     console.error("Error updating user:", error);
+//     res.status(400).json({
+//       success: false,
+//       message: error.message || "Failed to update user",
+//     });
+//   }
+// };
+
+
+
+
+
+
 const UpdateUser = async (req, res) => {
   try {
     const { id } = req.params;
     const {
       name,
       email,
-      categories = [],
-      programs = [], // array of programIds
+      categories,
+      programs, // array of programIds
       points,
       team,
       chessNumber,
@@ -334,55 +425,76 @@ const UpdateUser = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
 
     // Check for duplicate email or chessNumber
-    const existingUser = await User.findOne({
-      _id: { $ne: id },
-      $or: [{ email }, { chessNumber }],
-    });
-    if (existingUser)
-      return res.status(400).json({
-        success: false,
-        message: "Another user with same email or chess number exists",
+    if (email || chessNumber) {
+      const existingUser = await User.findOne({
+        _id: { $ne: id },
+        $or: [
+          ...(email ? [{ email }] : []),
+          ...(chessNumber ? [{ chessNumber }] : []),
+        ],
       });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: "Another user with same email or chess number exists",
+        });
+      }
+    }
 
-    // Validate categories
-    if (categories.length > 0) {
+    // Update categories only if provided
+    if (categories && categories.length > 0) {
       const categoryDocs = await Category.find({ _id: { $in: categories } });
-      if (categoryDocs.length !== categories.length)
-        return res.status(400).json({ success: false, message: "Some categories are invalid" });
+      if (categoryDocs.length !== categories.length) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Some categories are invalid" });
+      }
       user.categories = categories;
     }
 
-    // Validate programs
-    if (programs.length > 0) {
+    // ✅ Update programs only if provided
+    if (programs && programs.length > 0) {
       const programIds = programs.map((p) => new mongoose.Types.ObjectId(p));
       const validPrograms = await Program.find({ _id: { $in: programIds } });
-      if (validPrograms.length !== programIds.length)
-        return res.status(400).json({ success: false, message: "Some programs are invalid" });
+      if (validPrograms.length !== programIds.length) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Some programs are invalid" });
+      }
 
-      // Merge with existing programs
-      const mergedPrograms = programIds.map((pId) => {
-        const existingProgram = user.programs.find(
-          (p) => p.programId.toString() === pId.toString()
-        );
-        return {
+      // Check existing programs
+      const existingProgramIds = user.programs.map((p) =>
+        p.programId.toString()
+      );
+
+      // Only add new programs (skip duplicates)
+      const newPrograms = programIds.filter(
+        (pId) => !existingProgramIds.includes(pId.toString())
+      );
+
+      newPrograms.forEach((pId) => {
+        user.programs.push({
           programId: pId,
-          isActive: existingProgram ? existingProgram.isActive : false, // keep previous value
-        };
+          isActive: false, // default
+        });
       });
-
-      user.programs = mergedPrograms;
     }
 
-    // Validate team
-    const validTeams = ["RADIANCE", "BRILLIANCE", "RESILIENCE"];
-    if (team && !validTeams.includes(team))
-      return res.status(400).json({ success: false, message: "Invalid team value" });
+    // Validate team (optional)
+    if (team) {
+      const validTeams = ["RADIANCE", "BRILLIANCE", "RESILIENCE"];
+      if (!validTeams.includes(team)) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid team value" });
+      }
+      user.team = team;
+    }
 
-    // Update other fields
+    // Update other simple fields if provided
     if (name) user.name = name;
     if (email) user.email = email;
     if (points !== undefined) user.points = points;
-    if (team) user.team = team;
     if (chessNumber) user.chessNumber = chessNumber;
 
     await user.save();
@@ -400,12 +512,6 @@ const UpdateUser = async (req, res) => {
     });
   }
 };
-
-
-
-
-
-
 
 
 
@@ -784,6 +890,7 @@ const getPrograms = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 /**
  * Get all students in each program (Admin view)
  */
